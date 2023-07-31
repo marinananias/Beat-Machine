@@ -1,0 +1,307 @@
+;; CSC-151-01 (Spring 2023)
+;; Mini-Project 3: Beat Machine
+;; Marina Amorim Ananias
+;; 2023-02-27
+;; ACKNOWLEDGEMENTS: https://csc151.cs.grinnell.edu/mps/mp03.html; https://usermanuals.finalemusic.com/SongWriter2012Win/Content/PercussionMaps.htm (MIDI PERCUSSION VALUES); https://musescore.com/user/13700046/scores/4662816 (MY-BEAT INSPIRATION)
+
+(import music)
+
+"Part 1: Percussive Dynamics"
+"==========================="
+
+;;; (accent midi-note dur) -> composition?
+;;;   midi-note: integer?
+;;;   dur: dur?
+;;; Takes a midi-note value and duration as input and plays that note with an accent, i.e., at a louder volume. 
+
+(define accent
+    (lambda (midi-note dura)
+        (mod (dynamics 96) (note midi-note dura)))) 
+
+
+;;; (ghost midi-note dur) 
+;;;   midi-note: integer?
+;;;   dur: dur?
+;;; Takes a midi-note value and duration as input and plays that note as a ghost note, i.e., at a quieter volume. 
+
+(define ghost
+    (lambda (midi-note dura)
+        (mod (dynamics 32) (note midi-note dura)))) 
+
+
+;;; (strokes-bar) -> composition?
+;;; Composition of two bars, each consisting of four note 38 drum quarter notes: an accented note, two ghost notes, and a regular note, in sequence.
+
+(define strokes
+    (repeat 2 
+        (mod percussion 
+        (seq
+            (accent 38 qn)
+            (ghost 38 qn)
+            (ghost 38 qn)
+            (note 38 qn)))))
+
+"strokes"
+strokes
+
+;;; (tremolo slashes midi-note dur) -> composition?
+;;;   slashes: integer?
+;;;   midi-note: integer?
+;;;   dur: dur?
+;;; Returns a sequence of evenly spaced notes of the specified value that fit into dur with the certain number of tremolo given by slashes. 
+
+(define tremolo 
+    (lambda (slashes midi-note dura)
+    (let ([duration (dur (/ 1 (denominator dura)) (expt 2 slashes))])
+        (mod percussion (seq (repeat (expt 2 slashes) (note midi-note duration)))))))
+
+"tremolo"
+(tremolo 2 38 qn)
+
+;;; (roll midi-note dur) -> composition?
+;;;   midi-note: integer?
+;;;   dur: dur?
+;;; Returns a roll of the given duration by subdividing it into four equally-spaced notes. 
+
+(define roll 
+    (lambda (midi-note dura)
+    (let ([duration (dur (/ 1 (denominator dura)) 4)])
+        (mod percussion (seq (repeat 4 (note midi-note duration)))))))
+
+"roll"
+(roll 38 hn)
+
+;;; (flam midi-note dur) -> composition?
+;;;   midi-note: integer?
+;;;   dur: dur?
+;;; Returns a composition consisting of a grace note of half the duration played before the given note accented.
+
+(define flam                                    
+    (lambda (midi-note dura)
+    (let ([grace-note (note midi-note (dur (/ (/ 1 (denominator dura)) 2) 1))])
+        (mod percussion 
+        (pickup 
+            grace-note
+            (accent midi-note dura))))))
+
+"flam"
+(flam 38 qn)
+
+;;; (single-drag-tap midi-note) -> composition?
+;;;   midi-note: integer?
+;;; Returns a pair of sixteenth note grace notes, followed by a regular eighth note, and then finally an accented eighth note.
+
+(define single-drag-tap 
+    (lambda (midi-note)
+        (mod percussion 
+        (seq
+            (note midi-note sn)
+            (note midi-note sn)
+            (note midi-note en)
+            (accent midi-note en)))))
+
+"single-drag-tap"
+(single-drag-tap 38)
+
+"Part 2: An Example Groove"
+"==========================="
+
+;;; (horizontal-simple-rock-beat) -> composition?
+;;; Returns a composition through the horizontal division of each voice.
+
+(define horizontal-simple-rock-beat
+    (mod percussion 
+    (par
+        (seq (note 42 qn) (note 42 qn) (note 42 qn) (note 42 qn))
+        (seq (rest qn) (note 38 qn) (rest qn) (note 38 qn))
+        (seq (note 35 qn) (rest qn) (note 35 qn) (rest qn)))))
+
+"horizontal-simple-rock-beat"
+horizontal-simple-rock-beat
+
+;;; (vertical-simple-rock-beat) -> composition?
+;;; Returns a composition through the vertical division of each pulse.
+
+(define vertical-simple-rock-beat
+    (mod percussion 
+    (seq
+        (par (note 42 qn) (note 35 qn))
+        (par (note 42 qn) (note 38 qn))
+        (par (note 42 qn) (note 35 qn))        
+        (par (note 42 qn) (note 38 qn)))))
+
+"vertical-simple-rock-beat"
+vertical-simple-rock-beat
+
+"Part 3: Slicing up the Beats"
+"==========================="
+
+;;; (horizontal-beat-machine voices) -> composition?
+;;;     voices: list?
+;;; Returns a compositions of the voices of the groove, using an horizontal approach.
+
+(define horizontal-beat-machine
+    (lambda (voices)
+        (mod percussion 
+        (par
+            (apply seq (list-ref voices 0))
+            (apply seq (list-ref voices 1))
+            (apply seq (list-ref voices 2))))))
+
+;;; (vertical-beat-machine pulses duration) -> composition?
+;;;     pulses: list?
+;;;     duartion: list?
+;;; Returns a compositions of the pulses of the groove, using a vertical approach.
+
+(define vertical-beat-machine
+    (lambda (pulses duration)
+        (mod percussion 
+        (apply seq 
+            (map (lambda (pulses duration) 
+                    (apply par 
+                        (map (lambda (i) 
+                                    (note i duration)) pulses)))
+                pulses
+                duration)))))
+
+(define horizontal-new-simple-rock-beat
+    (horizontal-beat-machine 
+    (list 
+        (make-list 4 (note 42 qn)) 
+        (list (rest qn) (note 38 qn) (rest qn) (note 38 qn))
+        (list (note 35 qn) (rest qn) (note 35 qn) (rest qn)))))
+
+"horizontal-new-simple-rock-beat"
+horizontal-new-simple-rock-beat
+
+(define vertical-new-simple-rock-beat 
+    (vertical-beat-machine
+    (list (list 42 35) (list 42 38) (list 42 35) (list 42 38))
+    (list qn qn qn qn)))
+
+"vertical-new-simple-rock-beat"
+vertical-new-simple-rock-beat
+
+
+(define horizontal-elaborate-rock-beat 
+    (horizontal-beat-machine 
+        (list 
+        (make-list 8 (note 42 en)) 
+        (list (ghost 38 en) (ghost 38 en) (accent 38 en) (ghost 38 en) (ghost 38 en) (accent 38 en) (ghost 38 en) (ghost 38 en))
+        (list (note 35 en) (note 35 en) (rest en) (note 35 en) (rest qn) (rest en) (note 35 en)))))
+
+"horizontal-elaborate-rock-beat"
+horizontal-elaborate-rock-beat
+
+(define vertical-elaborate-rock-beat 
+    (vertical-beat-machine
+        (list (list 42 38 35) (list 42 38 35) (list 42 38) (list 42 38 35) (list 42 38) (list 42 38) (list 42 38) (list 42 38 35))
+        (make-list 8 en)))
+
+"vertical-elaborate-rock-beat"
+vertical-elaborate-rock-beat
+
+"Part 4: Exploring Grooves"
+"==========================="
+
+"LATIN"
+(define horizontal-latin-beat
+    (horizontal-beat-machine 
+        (list 
+        (make-list 8 (note 42 en)) 
+        (list (rest qn) (note 31 qn) (rest en) (note 31 qn)) ; last one qn.
+        (list (note 35 qn) (rest en) (note 35 en) (note 35 qn) (rest en) (note 35 en)))))
+
+"horizontal-latin-beat"
+horizontal-latin-beat
+
+(define vertical-latin-beat 
+    (vertical-beat-machine
+        (list (list 42 35) (list 42) (list 42 31) (list 42 35) (list 42 35) (list 42 31) (list 42) (list 42 35))
+        (make-list 8 en)))
+
+"vertical-latin-beat"
+vertical-latin-beat 
+
+"SWING"
+(define horizontal-swing-beat
+    (horizontal-beat-machine 
+        (list
+        (list (note 42 qn) (note 42 (dur 1 12)) (rest (dur 1 12)) (note 42 (dur 1 12)) (note 42 qn) (note 42 (dur 1 12)) (rest (dur 1 12)) (note 42 (dur 1 12)))
+        (list (rest qn) (note 38 qn) (rest qn) (note 38 qn))
+        (make-list 4 (note 35 qn)))))
+
+"horizontal-swing-beat"
+horizontal-swing-beat
+
+(define vertical-swing-beat 
+    (vertical-beat-machine
+        (list (list 42 35) (list 42 38 35) (list 42) (list 42 35) (list 42 38 35) (list 42))
+        (list qn (dur 1 6) (dur 1 12) qn (dur 1 6) (dur 1 12))))
+
+"vertical-swing-beat"
+vertical-swing-beat 
+
+"FUNK" 
+(define horizontal-funk-beat
+    (horizontal-beat-machine 
+        (list
+        (list (note 42 en) (note 42 en) (note 42 en) (note 42 sn) (rest sn) (note 42 sn) (note 42 sn) (rest sn) (note 42 en) (note 42 sn))        
+        (list (rest qn) (accent 38 en) (rest sn) (ghost 38 sn) (rest sn) (ghost 38 sn) (ghost 38 sn) (rest sn) (accent 38 en) (rest sn) (ghost 38 sn))
+        (list (note 35 en) (note 35 en) (rest qn) (rest en) (note 35 sn) (rest en) (note 35 sn) (rest sn)))))
+
+"horizontal-funk-beat"
+horizontal-funk-beat
+
+(define vertical-funk-beat 
+    (vertical-beat-machine
+        (list (list 42 35) (list 42 35) (list 42 38) (list 42) (list 38) (list 42) (list 38) (list 42 38) (list 35) (list 42 38) (list 42 35) (list 38))
+        (list en en en sn sn sn sn sn sn en sn sn)))
+
+"vertical-funk-beat"
+vertical-funk-beat 
+
+"GARBA"
+(define horizontal-garba-beat
+    (horizontal-beat-machine 
+        (list
+        (list (rest en) (rest en) (rest en) (rest en) (rest sn) (rest tn) (rest sn) (rest sn) (note 48 (dur 1 6)) (note 48 (dur 1 6)) (note 48 (dur 1 6)) (rest en))
+        (list (rest en) (note 38 en) (rest en) (note 38 en) (rest sn) (note 38 tn) (rest sn) (note 38 sn) (rest (dur 1 6)) (rest (dur 1 6)) (rest (dur 1 6)) (note 38 en)) 
+        (list (note 35 en) (rest en) (note 35 en) (rest en) (note 35 sn) (rest tn) (rest sn) (rest sn) (rest (dur 1 6)) (rest (dur 1 6)) (rest (dur 1 6)) (rest en)))))
+
+"horizontal-garba-beat"
+horizontal-garba-beat
+
+(define vertical-garba-beat 
+    (vertical-beat-machine
+        (list (list 35) (list 38) (list 35) (list 38) (list 35) (list 38) (list 38) (list 48) (list 48) (list 48) (list 38))
+        (list en en en en sn (dur 1 (* (denominator tn) 3)) sn (dur 1 6) (dur 1 6) (dur 1 6) en)))
+
+"vertical-garba-beat"
+vertical-garba-beat 
+
+"MY"
+(define my-beat
+    (horizontal-beat-machine 
+        (list
+        (list (accent 42 en) (ghost 42 en) (note 42 en) (ghost 42 en) (accent 42 en) (ghost 42 en) (note 42 en) (ghost 42 en) (accent 42 sn) (ghost 42 sn) (note 42 sn) (ghost 42 sn) (rest sn) (ghost 42 sn))
+        (list (roll 38 en) (rest qn) (note 38 en) (rest qn) (note 38 en) (rest en) (rest sn) (note 38 sn) (rest en) (rest sn) (note 38 sn) (rest sn))
+        (list (note 35 en) (rest qn) (note 35 en) (note 35 en) (flam 35 en) (note 35 sn) (note 35 sn) (rest en) (note 35 sn) (rest en)))))
+
+"my-beat"
+my-beat
+
+"Part 5: Reflection"
+"==========================="
+"a)"
+; I found way easier to implement the horizontal beat machine, which was also the one I chose to do my final groove with. 
+; I think that being able to manipulate the duration of each individual voice part per pulse gives you more flexibility in terms of the duration and is easier to write the code.
+; For "my-beat" I chose the horizontal because I it would allow me to use the helper functions and be more creative with it.
+
+"b)"
+; They slice up grooves horizontaly. If you do it per pulse for example, then it becomes almost like a key instrument because you start needing to push every button. 
+;It's the idea of chords, which is note very useful for percussion.
+
+"c)"
+; I would assume our input would have to indicated that. One way is having two other lists each with the index of the desired accented and ghosted notes respectively. 
+; In the function then, we would need conditionals to separate the regular, accented, and ghosted notes based on the index given on the input. 
